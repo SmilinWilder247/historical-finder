@@ -147,8 +147,8 @@ def create_stripe_session():
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=f'{st.secrets.get("BASE_URL", "http://localhost:8501")}/?premium=activated',
-            cancel_url=f'{st.secrets.get("BASE_URL", "http://localhost:8501")}/',
+            success_url='https://truth-finder.streamlit.app/?premium=activated',=f'{st.secrets.get("BASE_URL", "http://localhost:8501")}/?premium=activated',
+            cancel_url='https://truth-finder.streamlit.app/',=f'{st.secrets.get("BASE_URL", "http://localhost:8501")}/',
             metadata={'user_hash': get_user_hash()}
         )
         return session.url
