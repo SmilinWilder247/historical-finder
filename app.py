@@ -9,21 +9,17 @@ import pandas as pd
 import stripe
 import os
 
-# Security configurations
+# Stripe configuration
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_YOUR_KEY_HERE")
+STRIPE_PRICE_ID = "price_1RtcFs5sWoWofXkSUkzpp2pd"
+
 st.set_page_config(page_title="Historical Truth Finder", page_icon="🔍", layout="wide")
 
-# Input validation
 def sanitize_input(text):
     if not text or len(text) > 200:
         return ""
     return re.sub(r'[^\w\s-]', '', text.strip())
 
-def validate_email(email):
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-# Secure database operations
 def get_db_connection():
     conn = sqlite3.connect('searches.db', check_same_thread=False)
     conn.execute('PRAGMA foreign_keys = ON')
@@ -51,7 +47,6 @@ def init_database():
     conn.commit()
     return conn
 
-# User session management
 def get_user_hash():
     if 'user_id' not in st.session_state:
         st.session_state.user_id = hashlib.sha256(str(datetime.now()).encode()).hexdigest()[:16]
@@ -78,7 +73,6 @@ def add_premium_user(duration_days=30):
     conn.commit()
     conn.close()
 
-# Rate limiting
 def check_rate_limit():
     user_hash = get_user_hash()
     conn = get_db_connection()
@@ -89,18 +83,13 @@ def check_rate_limit():
     conn.close()
     return count
 
-# Secure API calls
-def safe_api_request(url, params, timeout=10):
+def safe_api_request(url, params, timeout=15):
     try:
         headers = {'User-Agent': 'HistoricalTruthFinder/1.0'}
         response = requests.get(url, params=params, headers=headers, timeout=timeout)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Network error: {type(e).__name__}")
-        return None
-    except json.JSONDecodeError:
-        st.error("Invalid response format")
+    except:
         return None
 
 def analyze_with_huggingface(title, content):
@@ -119,7 +108,7 @@ def analyze_with_huggingface(title, content):
             result = response.json()
             if result and len(result) > 0:
                 label = result[0].get('label', 'NEUTRAL')
-                score = min(max(result[0].get('score', 0.5), 0), 1)  # Clamp score
+                score = result[0].get('score', 0.5)
                 
                 return f"""🤖 AI Analysis:
 - Document Sentiment: {label}
@@ -128,23 +117,28 @@ def analyze_with_huggingface(title, content):
 - Status: {"Potentially significant" if score > 0.7 else "Standard document"}"""
         
         return "AI analysis temporarily unavailable"
-    except Exception as e:
-        return f"Analysis error: {type(e).__name__}"
+    except:
+        return "AI analysis temporarily unavailable"
 
 def create_stripe_session():
     try:
-        st.write("Debug: Stripe key exists:", bool(stripe.api_key))
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
-    'price': 'price_1RtcFs5sWoWofXkSUkzpp2pd',
-    'quantity': 1,
-}],
+                'price': STRIPE_PRICE_ID,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url='https://truth-finder.streamlit.app/?premium=activated',
+            cancel_url='https://truth-finder.streamlit.app/',
+            metadata={'user_hash': get_user_hash()}
+        )
         return session.url
     except Exception as e:
-        st.error(f"Stripe error: {str(e)}")
+        st.error(f"Payment system temporarily unavailable")
         return None
-def calculate_suppression_index(docs, query):
+
+def calculate_suppression_index(docs):
     if not docs:
         return 0
     
@@ -158,12 +152,10 @@ def calculate_suppression_index(docs, query):
     
     return min(score, 10)
 
-# Main application
 def main():
     st.title("🔍 Historical Truth Finder")
     st.caption("Professional research across 125+ years of archives")
     
-    # Initialize database
     init_database()
     
     # Check premium status
@@ -187,9 +179,10 @@ def main():
                     st.markdown(f"[Complete Payment]({payment_url})")
         else:
             st.success("✅ Premium Active")
-            st.link_button("Manage Subscription", "https://billing.stripe.com/p/login/https://billing.stripe.com/p/login/14A6oA0Iz5Fy1mZ8IwcV200")    # Search interface
-   
- col1, col2 = st.columns([3, 1])
+            st.link_button("Manage Subscription", "https://billing.stripe.com/p/login/14A6oA0Iz5Fy1mZ8IwcV200")
+    
+    # Search interface
+    col1, col2 = st.columns([3, 1])
     
     with col1:
         query = st.text_input("🔍 Research Topic:", placeholder="JFK assassination, MK-Ultra, etc.", max_chars=200)
@@ -212,7 +205,6 @@ def main():
             return
         
         with st.spinner("Searching archives..."):
-            # Archive.org search with security
             params = {
                 'q': f'{sanitized_query} AND mediatype:(texts OR data)',
                 'output': 'json',
@@ -220,12 +212,12 @@ def main():
                 'sort[]': 'date asc'
             }
             
-            data = safe_api_request("https://archive.org/advancedsearch.php", params, timeout=15)
+            data = safe_api_request("https://archive.org/advancedsearch.php", params)
             
             if data:
                 docs = data.get('response', {}).get('docs', [])
                 
-                # Log search securely
+                # Log search
                 conn = get_db_connection()
                 conn.execute(
                     "INSERT INTO searches (query, user_hash, results_count) VALUES (?, ?, ?)",
@@ -240,7 +232,7 @@ def main():
                         col1, col2, col3 = st.columns(3)
                         
                         with col1:
-                            st.metric("🚨 Suppression Index", f"{calculate_suppression_index(docs, sanitized_query)}/10")
+                            st.metric("🚨 Suppression Index", f"{calculate_suppression_index(docs)}/10")
                         
                         with col2:
                             dates = [d.get('date', '')[:4] for d in docs if d.get('date', '')[:4].isdigit()]
@@ -291,7 +283,7 @@ def main():
                             
                             identifier = str(doc.get('identifier', ''))
                             if identifier and re.match(r'^[a-zA-Z0-9_-]+$', identifier):
-                                st.link_button("📖 View", f"https://archive.org/details/{identifier}")
+                                st.link_button("📖 View Document", f"https://archive.org/details/{identifier}")
                     
                     # Export (Premium)
                     if premium:
@@ -299,7 +291,6 @@ def main():
                             'query': sanitized_query,
                             'timestamp': datetime.now().isoformat(),
                             'total_results': len(docs),
-                            'user_hash': get_user_hash()[:8],
                             'documents': [
                                 {
                                     'title': str(d.get('title', '')),
@@ -339,7 +330,7 @@ def main():
         with col3:
             st.write("**🔍 Alternative Sources**")
             st.write(f"[WikiLeaks](https://search.wikileaks.org/advanced?q={safe_query})")
-   
+    
     # FAQ Section
     st.subheader("❓ Frequently Asked Questions")
 
@@ -350,13 +341,14 @@ def main():
         st.write("Archive.org (1900-2025), CIA Reading Room, FBI Vault, WikiLeaks, and other historical archives.")
 
     with st.expander("How do I cancel my subscription?"):
-        st.write("Contact support@yourapp.com or use the manage subscription link in your account.")
+        st.write("Use the 'Manage Subscription' link in the sidebar or contact reversedetect2025@gmail.com")
 
     with st.expander("Why do some searches return cartoon results?"):
-        st.write("Archive.org contains all types of content. Use specific keywords like 'government', 'classified', or 'declassified' for better results.")    
+        st.write("Archive.org contains all types of content. Use specific keywords like 'government', 'classified', or 'declassified' for better results.")
 
     # Footer
     st.markdown("---")
     st.caption("© 2025 Historical Truth Finder | [Support](mailto:reversedetect2025@gmail.com) | [Terms](https://truth-finder.streamlit.app)")
+
 if __name__ == "__main__":
     main()
