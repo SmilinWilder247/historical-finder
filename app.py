@@ -137,21 +137,9 @@ def create_stripe_session():
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': 'Historical Truth Finder Premium',
-                        'description': 'Monthly access to unlimited searches and AI analysis'
-                    },
-                    'unit_amount': 399,
-                },
-                'quantity': 1,
-            }],
-            mode='subscription',
-            success_url='https://truth-finder.streamlit.app/?premium=activated',
-            cancel_url='https://truth-finder.streamlit.app/',
-            metadata={'user_hash': get_user_hash()}
-        )
+    'price': 'price_1RtcFs5sWoWofXkSUkzpp2pd',
+    'quantity': 1,
+}],
         return session.url
     except Exception as e:
         st.error(f"Stripe error: {str(e)}")
