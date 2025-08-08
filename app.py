@@ -187,9 +187,9 @@ def main():
                     st.markdown(f"[Complete Payment]({payment_url})")
         else:
             st.success("✅ Premium Active")
-    
-    # Search interface
-    col1, col2 = st.columns([3, 1])
+            st.link_button("Manage Subscription", "https://billing.stripe.com/p/login/https://billing.stripe.com/p/login/14A6oA0Iz5Fy1mZ8IwcV200")    # Search interface
+   
+ col1, col2 = st.columns([3, 1])
     
     with col1:
         query = st.text_input("🔍 Research Topic:", placeholder="JFK assassination, MK-Ultra, etc.", max_chars=200)
@@ -339,10 +339,24 @@ def main():
         with col3:
             st.write("**🔍 Alternative Sources**")
             st.write(f"[WikiLeaks](https://search.wikileaks.org/advanced?q={safe_query})")
-    
+   
+    # FAQ Section
+    st.subheader("❓ Frequently Asked Questions")
+
+    with st.expander("How does the AI analysis work?"):
+        st.write("Our AI analyzes document sentiment and identifies potentially significant content using natural language processing.")
+
+    with st.expander("What sources do you search?"):
+        st.write("Archive.org (1900-2025), CIA Reading Room, FBI Vault, WikiLeaks, and other historical archives.")
+
+    with st.expander("How do I cancel my subscription?"):
+        st.write("Contact support@yourapp.com or use the manage subscription link in your account.")
+
+    with st.expander("Why do some searches return cartoon results?"):
+        st.write("Archive.org contains all types of content. Use specific keywords like 'government', 'classified', or 'declassified' for better results.")    
+
     # Footer
     st.markdown("---")
-    st.caption("© 2025 Historical Truth Finder | [Support](mailto:support@yourapp.com) | [Privacy](https://yourapp.com/privacy)")
-
+    st.caption("© 2025 Historical Truth Finder | [Support](mailto:reversedetect2025@gmail.com) | [Terms](https://truth-finder.streamlit.app)")
 if __name__ == "__main__":
     main()
