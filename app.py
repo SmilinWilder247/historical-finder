@@ -348,7 +348,7 @@ def main():
 
     # Footer
     st.markdown("---")
-    st.caption("© 2025 Historical Truth Finder | [Support](mailto:reversedetect2025@gmail.com) | [Terms](https://truth-finder.streamlit.app)")
+    st.caption("© 2025 Historical Truth Finder | [Support](mailto:reversedetect2025@gmail.com) | [Privacy](https://github.com/smilinwilder247/historical-finder/blob/main/privacy.md) | [Terms](https://github.com/smilinwilder247/historical-finder/blob/main/terms.md)")
 
 if __name__ == "__main__":
     main()
