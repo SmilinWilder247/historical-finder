@@ -133,6 +133,7 @@ def analyze_with_huggingface(title, content):
 
 def create_stripe_session():
     try:
+        st.write("Debug: Stripe key exists:", bool(stripe.api_key))
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -142,7 +143,7 @@ def create_stripe_session():
                         'name': 'Historical Truth Finder Premium',
                         'description': 'Monthly access to unlimited searches and AI analysis'
                     },
-                    'unit_amount': 399,  # $3.99
+                    'unit_amount': 399,
                 },
                 'quantity': 1,
             }],
@@ -153,9 +154,8 @@ def create_stripe_session():
         )
         return session.url
     except Exception as e:
-        st.error(f"Payment system temporarily unavailable")
+        st.error(f"Stripe error: {str(e)}")
         return None
-
 def calculate_suppression_index(docs, query):
     if not docs:
         return 0
